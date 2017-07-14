@@ -32,9 +32,9 @@ try {
 
 var https = require('https');
 
-Date.prototype.addDays = function(days) {
-    this.setDate(this.getDate() + parseInt(days));
-    return this;
+Date.prototype.addDays = function (days) {
+  this.setDate(this.getDate() + parseInt(days));
+  return this;
 };
 
 function getFirstDateOfNextMonth() {
@@ -76,18 +76,17 @@ var getWeather = function (location, forecastInterval) {
   var forecastEndDate = formatDate(forecastInterval.to);
   var url = null;
   if (forecastBeginDate === forecastEndDate) {
-    url = 'https://query.yahooapis.com/v1/public/yql?q=select%20item.condition%2C%20item.forecast%20from%20weather.forecast%20where%20woeid%20in%20(select%20woeid%20from%20geo.places(1)%20where%20text%3D%22' + location
-      + '%22)%20and%20item.forecast.date%3D%22' + forecastBeginDate + '%22%20and%20u%3D%27c%27&format=json';
-  }
-  else {
-    url = 'https://query.yahooapis.com/v1/public/yql?q=select%20item.forecast%20from%20weather.forecast%20where%20woeid%20in%20(select%20woeid%20from%20geo.places(1)%20where%20text%3D%22' + location
-      + '%22)%20and%20item.forecast.date%20%20%3E%3D%20%22' + forecastBeginDate + '%22%20and%20%20item.forecast.date%20%20%3C%20%22' + forecastEndDate + '%22%20and%20u%3D%27c%27&format=json';
+    url = 'https://query.yahooapis.com/v1/public/yql?q=select%20item.condition%2C%20item.forecast%20from%20weather.forecast%20where%20woeid%20in%20(select%20woeid%20from%20geo.places(1)%20where%20text%3D%22' + location +
+      '%22)%20and%20item.forecast.date%3D%22' + forecastBeginDate + '%22%20and%20u%3D%27c%27&format=json';
+  } else {
+    url = 'https://query.yahooapis.com/v1/public/yql?q=select%20item.forecast%20from%20weather.forecast%20where%20woeid%20in%20(select%20woeid%20from%20geo.places(1)%20where%20text%3D%22' + location +
+      '%22)%20and%20item.forecast.date%20%20%3E%3D%20%22' + forecastBeginDate + '%22%20and%20%20item.forecast.date%20%20%3C%20%22' + forecastEndDate + '%22%20and%20u%3D%27c%27&format=json';
 
   }
 
   return fetch(url, {
-    method: 'GET'
-  })
+      method: 'GET'
+    })
     .then(rsp => {
       var res = rsp.json();
       //console.log('yql result: ', JSON.stringify(res) );
@@ -114,9 +113,13 @@ const WIT_TOKEN = process.env.WIT_TOKEN;
 
 // Messenger API parameters
 const FB_PAGE_TOKEN = process.env.FB_PAGE_TOKEN;
-if (!FB_PAGE_TOKEN) { throw new Error('missing FB_PAGE_TOKEN') }
+if (!FB_PAGE_TOKEN) {
+  throw new Error('missing FB_PAGE_TOKEN')
+}
 const FB_APP_SECRET = process.env.FB_APP_SECRET;
-if (!FB_APP_SECRET) { throw new Error('missing FB_APP_SECRET') }
+if (!FB_APP_SECRET) {
+  throw new Error('missing FB_APP_SECRET')
+}
 
 //define a fixed FB_VERIFY_TOKEN
 let FB_VERIFY_TOKEN = 'yatsea-weatherbot';
@@ -136,15 +139,21 @@ crypto.randomBytes(8, (err, buff) => {
 
 const fbMessage = (id, text) => {
   const body = JSON.stringify({
-    recipient: { id },
-    message: { text },
+    recipient: {
+      id
+    },
+    message: {
+      text
+    },
   });
   const qs = 'access_token=' + encodeURIComponent(FB_PAGE_TOKEN);
   return fetch('https://graph.facebook.com/me/messages?' + qs, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body,
-  })
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body,
+    })
     .then(rsp => rsp.json())
     .then(json => {
       if (json.error && json.error.message) {
@@ -174,7 +183,10 @@ const findOrCreateSession = (fbid) => {
   if (!sessionId) {
     // No session found for user fbid, let's create a new one
     sessionId = new Date().toISOString();
-    sessions[sessionId] = { fbid: fbid, context: {} };
+    sessions[sessionId] = {
+      fbid: fbid,
+      context: {}
+    };
   }
   return sessionId;
 };
@@ -183,8 +195,7 @@ const firstEntityValue = (entities, entity) => {
   const val = entities && entities[entity] &&
     Array.isArray(entities[entity]) &&
     entities[entity].length > 0 &&
-    entities[entity][0].value
-    ;
+    entities[entity][0].value;
   if (!val) {
     return null;
   }
@@ -193,7 +204,11 @@ const firstEntityValue = (entities, entity) => {
 
 // Our bot actions
 const actions = {
-  send({ sessionId }, { text }) {
+  send({
+    sessionId
+  }, {
+    text
+  }) {
     // Our bot has something to say!
     // Let's retrieve the Facebook user whose session belongs to
     const recipientId = sessions[sessionId].fbid;
@@ -219,14 +234,16 @@ const actions = {
   },
   // You should implement your custom actions here
   // See https://wit.ai/docs/quickstart
-  weatherForecast({ context, entities }) {
+  weatherForecast({
+    context,
+    entities
+  }) {
     console.log('entities', JSON.stringify(entities));
     var location = firstEntityValue(entities, 'location');
     //if no location found from the input, then take it from conversation context
     if (location === null) {
       location = context.location;
-    }
-    else {
+    } else {
       context.location = location;
     }
 
@@ -241,12 +258,10 @@ const actions = {
         forecastInterval.to = entities.datetime[0].values[0].to.value;
         console.log('forecastInterval:', JSON.stringify(forecastInterval));
         context.forecastInterval = forecastInterval;
-      }
-      catch (e) {
+      } catch (e) {
         if (typeof context.forecastInterval !== 'undefined') {
           forecastInterval = context.forecastInterval;
-        }
-        else {
+        } else {
           forecastDate = new Date().toISOString();
           forecastInterval.from = forecastDate;
           forecastInterval.to = forecastDate;
@@ -254,17 +269,20 @@ const actions = {
         }
         console.log('forecastDate:', forecastDate);
       }
-    }
-    else {
+    } else {
       //Got the first value.
       forecastInterval.from = forecastDate;
       forecastInterval.to = forecastDate;
+      var now = new Date();
+      if (new Date(forecastDate).getDate() === now.getDate()) {
+        isToday = true;
+      }
+
       //The grain type is week, not day, so expand to week for end of forecast.
       if (entities.datetime[0].values[0].grain === 'week') {
         forecastInterval.to = new Date(forecastDate).addDays(7).toISOString();
         //console.log('found grain week-To:', forecastInterval.to);
-      }
-      else if (entities.datetime[0].values[0].grain === 'month') {
+      } else if (entities.datetime[0].values[0].grain === 'month') {
         var fdm = getFirstDateOfNextMonth();
         forecastInterval.from = fdm.toISOString();
         forecastInterval.to = fdm.addDays(7).toISOString();
@@ -280,45 +298,42 @@ const actions = {
     if (location && forecastInterval.from && forecastInterval.to) {
       return new Promise(function (resolve, reject) {
         return getWeather(location, forecastInterval).then(weatherJson => {
-                    //console.log('weather json',JSON.stringify(weatherJson));
-                    context.forecastResult = '';
-                    if (weatherJson.query.count > 1) {
-                        var channels = weatherJson.query.results.channel;
-                        context.forecastResult = 'Weather forecast in ' + location + ':\n';
-                        channels.forEach(function (element) {
-                            var forecast = element.item.forecast;
-                            context.forecastResult += forecast.date.substring(0,6) + '(' + forecast.day + '): ' + forecast.text + ',' + forecast.low + '°C~' +  forecast.high + '°C.\n';
-                        }, this);
-                        //delete context.forecastInterval;
-                    }
-                    else if (weatherJson.query.count === 1) {
-                        var forecast = weatherJson.query.results.channel.item.forecast;
-                        //weatherJson.weather[0].description
-                        var currCondition = weatherJson.query.results.channel.item.condition;
-                        if (isToday) {
-                            var currCondition = weatherJson.query.results.channel.item.condition;
-                            context.forecastResult = 'Currently in ' + location + ' it is ' + currCondition.text
-                                + ' with ' + currCondition.temp + ' °C.\nHigh: ' + forecast.high + ' °C, Low: ' + forecast.low + ' °C.';
-                        }
-                        else {
-                            context.forecastResult = 'It will be ' + forecast.text + ' in ' + location + ' on ' + forecast.date +
-                                ' with ' + forecast.low + '°C~' + forecast.high + '°C.\n'
-                            //'.\nHigh: ' + forecast.high + ' °C, Low: ' + forecast.low + ' °C.';
-                        }
-                        //delete context.forecastInterval;
-                    }
-                    else {
-                        //no result
-                        context.wrongCity = true;
-                    }
+          //console.log('weather json',JSON.stringify(weatherJson));
+          context.forecastResult = '';
+          if (weatherJson.query.count > 1) {
+            var channels = weatherJson.query.results.channel;
+            context.forecastResult = 'Weather forecast in ' + location + ':\n';
+            channels.forEach(function (element) {
+              var forecast = element.item.forecast;
+              context.forecastResult += forecast.date.substring(0, 6) + '(' + forecast.day + '): ' + forecast.text + ',' + forecast.low + '°C~' + forecast.high + '°C.\n';
+            }, this);
+            //delete context.forecastInterval;
+          } else if (weatherJson.query.count === 1) {
+            var forecast = weatherJson.query.results.channel.item.forecast;
+            //weatherJson.weather[0].description
+            var currCondition = weatherJson.query.results.channel.item.condition;
+            if (isToday) {
+              var currCondition = weatherJson.query.results.channel.item.condition;
+              context.forecastResult = 'Currently in ' + location + ' it is ' + currCondition.text +
+                ' with ' + currCondition.temp + ' °C.\nHigh: ' + forecast.high + ' °C, Low: ' + forecast.low + ' °C.';
+            } else {
+              context.forecastResult = 'It will be ' + forecast.text + ' in ' + location + ' on ' + forecast.date +
+                ' with ' + forecast.low + '°C~' + forecast.high + '°C.\n'
+              //'.\nHigh: ' + forecast.high + ' °C, Low: ' + forecast.low + ' °C.';
+            }
+            //delete context.forecastInterval;
+          } else {
+            //no result
+            context.wrongCity = true;
+          }
 
-                    //console.log('Forecast result: \n', context.forecastResult);
-                    //var weatherResult = weatherJson.query.results.channel.item.condition.text;
-                    //weatherJson.weather[0].description
-                    //context.forecastResult = forecastResult; // we should call a weather API here
-                    delete context.missingLocation;
-                    return resolve(context);
-                })
+          //console.log('Forecast result: \n', context.forecastResult);
+          //var weatherResult = weatherJson.query.results.channel.item.condition.text;
+          //weatherJson.weather[0].description
+          //context.forecastResult = forecastResult; // we should call a weather API here
+          delete context.missingLocation;
+          return resolve(context);
+        })
       });
     } else {
       context.missingLocation = true;
@@ -388,13 +403,18 @@ const wit = new Wit({
 
 // Starting our webserver and putting it all together
 const app = express();
-app.use(({ method, url }, rsp, next) => {
+app.use(({
+  method,
+  url
+}, rsp, next) => {
   rsp.on('finish', () => {
     console.log(`${rsp.statusCode} ${method} ${url}`);
   });
   next();
 });
-app.use(bodyParser.json({ verify: verifyRequestSignature }));
+app.use(bodyParser.json({
+  verify: verifyRequestSignature
+}));
 
 // Webhook setup
 app.get('/webhook', (req, res) => {
@@ -427,7 +447,10 @@ app.post('/webhook', (req, res) => {
           const sessionId = findOrCreateSession(sender);
 
           // We retrieve the message content
-          const { text, attachments } = event.message;
+          const {
+            text,
+            attachments
+          } = event.message;
           //console.log('sending...', JSON.stringify(res));
           console.log('sending...', text);
           if (attachments) {
@@ -441,24 +464,24 @@ app.post('/webhook', (req, res) => {
             // Let's forward the message to the Wit.ai Bot Engine
             // This will run all actions until our bot has nothing left to do
             wit.runActions(
-              sessionId, // the user's current session
-              text, // the user's message
-              sessions[sessionId].context // the user's current session state
-            ).then((context) => {
-              // Our bot did everything it has to do.
-              // Now it's waiting for further messages to proceed.
-              console.log('Waiting for next user messages');
+                sessionId, // the user's current session
+                text, // the user's message
+                sessions[sessionId].context // the user's current session state
+              ).then((context) => {
+                // Our bot did everything it has to do.
+                // Now it's waiting for further messages to proceed.
+                console.log('Waiting for next user messages');
 
-              // Based on the session state, you might want to reset the session.
-              // This depends heavily on the business logic of your bot.
-              // Example:
-              // if (context['done']) {
-              //   delete sessions[sessionId];
-              // }
+                // Based on the session state, you might want to reset the session.
+                // This depends heavily on the business logic of your bot.
+                // Example:
+                // if (context['done']) {
+                //   delete sessions[sessionId];
+                // }
 
-              // Updating the user's current session state
-              sessions[sessionId].context = context;
-            })
+                // Updating the user's current session state
+                sessions[sessionId].context = context;
+              })
               .catch((err) => {
                 console.error('Oops! Got an error from Wit: ', err.stack || err);
               })
