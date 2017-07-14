@@ -252,6 +252,8 @@ const actions = {
     var forecastDate = firstEntityValue(entities, 'datetime');
     var forecastInterval = {};
     var isToday = false;
+    var today = new Date().toISOString().substr(0, 10);
+
     if (null === forecastDate) {
       try {
         forecastInterval.from = entities.datetime[0].values[0].from.value;
@@ -273,8 +275,11 @@ const actions = {
       //Got the first value.
       forecastInterval.from = forecastDate;
       forecastInterval.to = forecastDate;
-      var now = new Date();
-      if (new Date(forecastDate).getDate() === now.getDate()) {
+      var nowStr = new Date().toISOString();
+      //Date format: 2017-07-13T18:20:49.000+10:00"
+      //Check if the forcastDate(from Wit) is the same date in the host server.
+      //There may be potential issue, for the nowStr isn't the current time of the client.
+      if (forecastDate.substr(0, 10) === today) {
         isToday = true;
       }
 
@@ -289,6 +294,10 @@ const actions = {
       }
 
       context.forecastInterval = forecastInterval;
+    }
+    //Only isToday is not set then check if it is today.
+    if ((isToday === false) && (forecastInterval.from.substr(0, 10) === today)) {
+      isToday = true;
     }
 
     delete context.missingLocation;
@@ -342,56 +351,6 @@ const actions = {
       return context;
     }
   },
-  /*** 
-  weatherForecast({ context, entities }) {
-    //console.log(JSON.stringify(entities));
-    var location = firstEntityValue(entities, 'location');
-    var forecastDate = firstEntityValue(entities, 'datetime');
-    
-    var isToday = false;
-    if (null === forecastDate) {
-      forecastDate = new Date().toISOString();
-      isToday = true;
-    }
-    //Clear the context
-    delete context.missingLocation;
-    delete context.wrongCity;
-    delete context.forecastResult;
-
-    //var forecastDate = entities.datetime[0].values[0].value;
-    if (location && forecastDate) {
-      return new Promise(function (resolve, reject) {
-        return getWeather(location, forecastDate).then(weatherJson => {
-          console.log('weather json', JSON.stringify(weatherJson));
-          context.location = location;
-          if (weatherJson.query.count > 0) {
-            var forecast = weatherJson.query.results.channel.item.forecast;
-            //weatherJson.weather[0].description
-            if (isToday) {
-              var currCondition = weatherJson.query.results.channel.item.condition;
-              context.forecastResult = 'Currently in ' + location + ' it is ' + currCondition.text 
-              + ' with ' + currCondition.temp + ' °C.\nHigh: ' + forecast.high + ' °C, Low: ' + forecast.low + ' °C.';
-            }
-            else {
-              context.forecastResult = 'It will be '+ forecast.text + ' in ' + location + ' on ' + forecast.date +
-                '.\nHigh: ' + forecast.high + ' °C, Low: ' + forecast.low + ' °C.';
-            }
-          }
-          else {
-            context.wrongCity = true;
-            //delete context.forecastResult;
-            //delete context.missingLocation;
-          }
-          return resolve(context);
-        })
-      });
-    } else {
-      context.missingLocation = true;
-      //delete context.forecastResult;
-      //return Promise.reject(context);
-      return context;
-    }
-  },*/
 };
 
 // Setting up our bot

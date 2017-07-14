@@ -47,17 +47,16 @@ var getWeather = function (location, forecastInterval) {
     var forecastEndDate = formatDate(forecastInterval.to);
     var url = null;
     if (forecastBeginDate === forecastEndDate) {
-        url = 'https://query.yahooapis.com/v1/public/yql?q=select%20item.condition%2C%20item.forecast%20from%20weather.forecast%20where%20woeid%20in%20(select%20woeid%20from%20geo.places(1)%20where%20text%3D%22' + location
-            + '%22)%20and%20item.forecast.date%3D%22' + forecastBeginDate + '%22%20and%20u%3D%27c%27&format=json';
-    }
-    else {
-        url = 'https://query.yahooapis.com/v1/public/yql?q=select%20item.forecast%20from%20weather.forecast%20where%20woeid%20in%20(select%20woeid%20from%20geo.places(1)%20where%20text%3D%22' + location
-            + '%22)%20and%20item.forecast.date%20%20%3E%3D%20%22' + forecastBeginDate + '%22%20and%20%20item.forecast.date%20%20%3C%20%22' + forecastEndDate + '%22%20and%20u%3D%27c%27&format=json';
+        url = 'https://query.yahooapis.com/v1/public/yql?q=select%20item.condition%2C%20item.forecast%20from%20weather.forecast%20where%20woeid%20in%20(select%20woeid%20from%20geo.places(1)%20where%20text%3D%22' + location +
+            '%22)%20and%20item.forecast.date%3D%22' + forecastBeginDate + '%22%20and%20u%3D%27c%27&format=json';
+    } else {
+        url = 'https://query.yahooapis.com/v1/public/yql?q=select%20item.forecast%20from%20weather.forecast%20where%20woeid%20in%20(select%20woeid%20from%20geo.places(1)%20where%20text%3D%22' + location +
+            '%22)%20and%20item.forecast.date%20%20%3E%3D%20%22' + forecastBeginDate + '%22%20and%20%20item.forecast.date%20%20%3C%20%22' + forecastEndDate + '%22%20and%20u%3D%27c%27&format=json';
 
     }
     return fetch(url, {
-        method: 'GET'
-    })
+            method: 'GET'
+        })
         .then(rsp => {
             var res = rsp.json();
             //console.log('yql result: ', JSON.stringify(res) );
@@ -105,63 +104,86 @@ const firstEntityValue = (entities, entity) => {
 
 const actions = {
     send(request, response) {
-        const { sessionId, context, entities } = request;
-        const { text, quickreplies } = response;
+        const {
+            sessionId,
+            context,
+            entities
+        } = request;
+        const {
+            text,
+            quickreplies
+        } = response;
         return new Promise(function (resolve, reject) {
             console.log('iWeatherBot says: \n', response.text);
             return resolve();
         });
     },
-    weatherForecast({ context, entities }) {
+    weatherForecast({
+        context,
+        entities
+    }) {
         console.log('entities', JSON.stringify(entities));
         var location = firstEntityValue(entities, 'location');
         if (location === null) {
             location = context.location;
-        }
-        else {
+        } else {
             context.location = location;
         }
         var forecastDate = firstEntityValue(entities, 'datetime');
         var forecastInterval = {};
         var isToday = false;
+        var today = new Date().toISOString().substr(0, 10);
+
         if (null === forecastDate) {
             try {
                 forecastInterval.from = entities.datetime[0].values[0].from.value;
                 forecastInterval.to = entities.datetime[0].values[0].to.value;
                 //console.log('forecastInterval:', JSON.stringify(forecastInterval));
                 context.forecastInterval = forecastInterval;
-            }
-            catch (e) {
+            } catch (e) {
                 if (typeof context.forecastInterval !== 'undefined') {
                     forecastInterval = context.forecastInterval;
-                }
-                else {
+                } else {
                     forecastDate = new Date().toISOString();
                     forecastInterval.from = forecastDate;
                     forecastInterval.to = forecastDate;
                     isToday = true;
                 }
-                //console.log('forecastDate:', forecastDate);
             }
-        }
-        else {
+        } else {
             forecastInterval.from = forecastDate;
             forecastInterval.to = forecastDate;
+
+            //Date format: 2017-07-13T18:20:49.000+10:00"
+            //Check if the forcastDate(from Wit) is the same date in the host server.
+            //There may be potential issue, for the nowStr isn't the current time of the client.
+            if (forecastDate.substr(0, 10) === today) {
+                isToday = true;
+            }
+
+            //Handle the case: what's the weather in Melbourne next week or next month
+            //Convert to a date range.
             if (entities.datetime[0].values[0].grain === 'week') {
                 forecastInterval.to = new Date(forecastDate).addDays(7).toISOString();
                 //console.log('found grain week-To:', forecastInterval.to);
-            }
-            else if (entities.datetime[0].values[0].grain === 'month') {
+            } else if (entities.datetime[0].values[0].grain === 'month') {
                 var fdm = getFirstDateOfNextMonth();
                 forecastInterval.from = fdm.toISOString();
                 forecastInterval.to = fdm.addDays(7).toISOString();
             }
             context.forecastInterval = forecastInterval;
         }
+
+        //Only isToday is not set then check if it is today.
+        if ((isToday === false) && (forecastInterval.from.substr(0, 10) === today)) {
+            isToday = true;
+        }
+
         console.log('forecastInterval: ', JSON.stringify(forecastInterval));
         delete context.missingLocation;
         delete context.wrongCity;
         delete context.forecastResult;
+
 
         if (location && forecastInterval.from && forecastInterval.to) {
             return new Promise(function (resolve, reject) {
@@ -173,27 +195,24 @@ const actions = {
                         context.forecastResult = 'Weather forecast in ' + location + ':\n';
                         channels.forEach(function (element) {
                             var forecast = element.item.forecast;
-                            context.forecastResult += forecast.date.substring(0,6) + '(' + forecast.day + '): ' + forecast.text + ',' + forecast.low + '°C~' +  forecast.high + '°C.\n';
+                            context.forecastResult += forecast.date.substring(0, 6) + '(' + forecast.day + '): ' + forecast.text + ',' + forecast.low + '°C~' + forecast.high + '°C.\n';
                         }, this);
                         //delete context.forecastInterval;
-                    }
-                    else if (weatherJson.query.count === 1) {
+                    } else if (weatherJson.query.count === 1) {
                         var forecast = weatherJson.query.results.channel.item.forecast;
                         //weatherJson.weather[0].description
                         var currCondition = weatherJson.query.results.channel.item.condition;
                         if (isToday) {
                             var currCondition = weatherJson.query.results.channel.item.condition;
-                            context.forecastResult = 'Currently in ' + location + ' it is ' + currCondition.text
-                                + ' with ' + currCondition.temp + ' °C.\nHigh: ' + forecast.high + ' °C, Low: ' + forecast.low + ' °C.';
-                        }
-                        else {
+                            context.forecastResult = 'Currently in ' + location + ' it is ' + currCondition.text +
+                                ' with ' + currCondition.temp + ' °C.\nHigh: ' + forecast.high + ' °C, Low: ' + forecast.low + ' °C.';
+                        } else {
                             context.forecastResult = 'It will be ' + forecast.text + ' in ' + location + ' on ' + forecast.date +
                                 ' with ' + forecast.low + '°C~' + forecast.high + '°C.\n'
                             //'.\nHigh: ' + forecast.high + ' °C, Low: ' + forecast.low + ' °C.';
                         }
                         //delete context.forecastInterval;
-                    }
-                    else {
+                    } else {
                         //no result
                         context.wrongCity = true;
                     }
@@ -215,5 +234,8 @@ const actions = {
     },
 };
 
-const client = new Wit({ accessToken, actions });
+const client = new Wit({
+    accessToken,
+    actions
+});
 interactive(client);
